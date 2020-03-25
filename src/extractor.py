@@ -244,20 +244,21 @@ class Extractor:
 
     def loop_on_sheets(self, book: Book, deep: int = 0, go_deeper_by: int = 2) -> int:
         time.sleep(0.5)
-        # Find each sheet
-        sheet_positions = find_imgs_on_screen(str(self.fiche), click=False, confidence=0.967)
+        if find_img_on_screen(self.fiche, click=False, minSearchTime=2, confidence=0.967):
+            # Find each sheet
+            sheet_positions = find_imgs_on_screen(str(self.fiche), click=False, confidence=0.967)
 
-        x_sheet: int = 1
-        y_sheet: int = 1
-        for sheet_pos in sheet_positions:
-            x_sheet, y_sheet = pyautogui.center(sheet_pos)
-            print(x_sheet, y_sheet)
-            pyautogui.click(x_sheet, y_sheet)
-            time.sleep(0.5)
+            x_sheet: int = 1
+            y_sheet: int = 1
+            for sheet_pos in sheet_positions:
+                x_sheet, y_sheet = pyautogui.center(sheet_pos)
+                print(x_sheet, y_sheet)
+                pyautogui.click(x_sheet, y_sheet)
+                time.sleep(0.5)
 
-            self.save_sheet(book, x_sheet, y_sheet)
-            time.sleep(0.5)
-        pyautogui.click(x_sheet + 800, y_sheet)
+                self.save_sheet(book, x_sheet, y_sheet)
+                time.sleep(0.5)
+            pyautogui.click(x_sheet + 800, y_sheet)
 
         time.sleep(0.5)
         if find_img_on_screen(self.end_of_list, click=False, minSearchTime=1, confidence=0.97):
@@ -279,6 +280,7 @@ class Extractor:
             return new_deep
         for _ in range(new_deep):
             find_img_on_screen(self.monter_liste, confidence=0.95)
+                
 
     def save_sheet(self, book: Book, x_sheet: int, y_sheet: int, max_retries: int = 10):
         # Try to a find a `save` button.
