@@ -4,16 +4,15 @@ import dataclasses
 import datetime
 import os
 import pathlib
-import re
 import shutil
 import time
 import typing
 import webbrowser
 
-from loguru import logger
 import pandas as pd
 import pyautogui
 import pyscreeze
+from loguru import logger
 
 
 class NoNewSheets(Exception):
@@ -209,7 +208,7 @@ class Extractor:
                 if url.year == "2012" and _book.name == "bleu":
                     time.sleep(10)
                     continue
-                
+
                 book = Book(url, url_folder, _book)
 
                 list_minus = book.minus_sub_book
@@ -287,7 +286,6 @@ class Extractor:
             return new_deep
         for _ in range(new_deep):
             find_img_on_screen(self.monter_liste, confidence=0.95)
-                
 
     def save_sheet(self, book: Book, x_sheet: int, y_sheet: int, max_retries: int = 10):
         # Try to a find a `save` button.
