@@ -206,6 +206,10 @@ class Extractor:
             url_folder.mkdir(parents=True, exist_ok=True)
 
             for _book in self.books:
+                if url.year == "2012" and _book.name == "bleu":
+                    time.sleep(10)
+                    continue
+                
                 book = Book(url, url_folder, _book)
 
                 list_minus = book.minus_sub_book
@@ -274,7 +278,10 @@ class Extractor:
             return deep + go_deeper_by
         except NoNewSheets:
             print("No new sheets.")
-            return deep + go_deeper_by
+            if deep:
+                return deep + go_deeper_by
+            else:
+                new_deep = deep + go_deeper_by
 
         if deep:
             return new_deep
