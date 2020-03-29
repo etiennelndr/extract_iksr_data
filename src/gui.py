@@ -318,7 +318,7 @@ class GUIExtractor(Extractor):
         # Ctrl+l to get URL
         pyautogui.hotkey('ctrl', 'l', interval=0.1)
         time.sleep(0.1)
-        # Copy the URL inside of the clipboard.
+        # Copy the URL to the clipboard.
         pyautogui.hotkey('ctrl', 'c', interval=0.1)
         time.sleep(0.1)
 
