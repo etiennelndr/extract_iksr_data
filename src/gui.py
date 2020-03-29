@@ -17,6 +17,7 @@ from loguru import logger
 
 from .extractor import Extractor
 from .extractor import _free_dir
+from .extractor import replace_in_string
 
 
 def open_webbrowser(url):
@@ -190,7 +191,8 @@ class GUIExtractor(Extractor):
         self.all_params_file = open(str(self.all_parameters), "w")
         self.write_to_file = True
 
-        current_time = str(datetime.datetime.now()).replace(" ", "_").replace(":", "-")
+        current_time = str(datetime.datetime.now())
+        current_time = replace_in_string(current_time, {" ": "_", ":": "-"})
         logger.add(self.results / f"file_{current_time}.log")
 
         pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = True
