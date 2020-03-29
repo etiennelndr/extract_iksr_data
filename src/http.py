@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-import datetime
 import os
 import pathlib
 import shutil
 import threading
 import typing
 
+import loguru
 import requests
-from loguru import logger
 
 from .extractor import Extractor
 from .extractor import _free_dir
-from .extractor import replace_in_string
-
 
 NBR_MUTEX = 1
 MUTEXES_GENERATE = [threading.Lock() for _ in range(NBR_MUTEX)]
@@ -23,13 +20,13 @@ MUTEX_LOGGER = threading.Lock()
 
 def info(text: str):
     MUTEX_LOGGER.acquire()
-    logger.info(text)
+    loguru.logger.info(text)
     MUTEX_LOGGER.release()
 
 
 def error(text: str):
     MUTEX_LOGGER.acquire()
-    logger.error(text)
+    loguru.logger.error(text)
     MUTEX_LOGGER.release()
 
 
@@ -37,6 +34,7 @@ class Work:
     """
     Thread safe work to extract HTTP content from CIPR/IKSR website.
     """
+
     def __init__(
         self,
         result_folder: pathlib.Path,
@@ -44,7 +42,7 @@ class Work:
         year: str,
         parameters: typing.Dict[str, int],
         mutex_generate: threading.Lock,
-        mutex_download: threading.Lock
+        mutex_download: threading.Lock,
     ):
         self.result_folder = (result_folder / "http") / year
         if not self.result_folder.exists():
@@ -126,11 +124,6 @@ class HTTPExtractor(Extractor):
     def __init__(self, url: str, _min: int, _max: int, folder: pathlib.Path, delete_existing: bool = False):
         super().__init__(url, _min, _max, folder, delete_existing)
 
-        self.results = self.folder / "results"
-        if self.delete_existing and self.results.exists():
-            _free_dir(self.results)
-        self.results.mkdir(parents=True, exist_ok=True)
-
         all_parameters = self.results / "all_parameters.txt"
         parameters: typing.Dict[str, int] = {}
         with open(str(all_parameters), "r") as all_params_file:
@@ -144,10 +137,6 @@ class HTTPExtractor(Extractor):
             mutex_download = MUTEXES_DOWNLOAD[i % NBR_MUTEX]
             work = Work(self.results, url, str(year), parameters, mutex_generate, mutex_download)
             self.works.append(work)
-
-        current_time = str(datetime.datetime.now())
-        current_time = replace_in_string(current_time, {" ": "_", ":": "-"})
-        logger.add(self.results / f"file_{current_time}.log")
 
     def run(self):
         threads: typing.List[threading.Thread] = []

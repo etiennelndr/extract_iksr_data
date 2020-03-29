@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import datetime
 import os
 import pathlib
 import shutil
@@ -9,15 +8,13 @@ import time
 import typing
 import webbrowser
 
+import loguru
 import pandas as pd
 import pyautogui
 import pyscreeze
 import win32clipboard
-from loguru import logger
 
 from .extractor import Extractor
-from .extractor import _free_dir
-from .extractor import replace_in_string
 
 
 def open_webbrowser(url):
@@ -164,42 +161,34 @@ class GUIExtractor(Extractor):
 
         self.urls: typing.List[Url] = [Url(url, str(year)) for year in self.all_years]
         self.urls.reverse()
-        self.results = self.folder / "results"
-        if self.delete_existing and self.results.exists():
-            _free_dir(self.results)
-        self.results.mkdir(parents=True, exist_ok=True)
-        livres_folder = folder / "livres"
-        self.books = [d for d in livres_folder.iterdir() if d.is_dir()]
+        self.livres_folder = self.folder / "livres"
+        self.books = [d for d in self.livres_folder.iterdir() if d.is_dir()]
 
-        self.descendre_liste = livres_folder / "descendre_liste.png"
-        self.monter_liste = livres_folder / "monter_liste.png"
-        self.fiche = livres_folder / "fiche.png"
-        self.close_tab = folder / "close_tab.png"
-        self.save = livres_folder / "sauvegarde.png"
-        self.click_download = livres_folder / "click_download.png"
-        self.download_compressed = livres_folder / "download_compressed.png"
-        self.no_data = livres_folder / "no_data.png"
-        self.save_ok = livres_folder / "save_ok.png"
-        self.save_file = livres_folder / "save_file.png"
-        self.close_compressed = folder / "close_compressed.png"
-        self.close_zipfile = folder / "close_zipfile.png"
-        self.close_window = folder / "close_window.png"
-        self.end_of_list = livres_folder / "fin_liste.png"
+        self.descendre_liste = self.livres_folder / "descendre_liste.png"
+        self.monter_liste = self.livres_folder / "monter_liste.png"
+        self.fiche = self.livres_folder / "fiche.png"
+        self.close_tab = self.folder / "close_tab.png"
+        self.save = self.livres_folder / "sauvegarde.png"
+        self.click_download = self.livres_folder / "click_download.png"
+        self.download_compressed = self.livres_folder / "download_compressed.png"
+        self.no_data = self.livres_folder / "no_data.png"
+        self.save_ok = self.livres_folder / "save_ok.png"
+        self.save_file = self.livres_folder / "save_file.png"
+        self.close_compressed = self.folder / "close_compressed.png"
+        self.close_zipfile = self.folder / "close_zipfile.png"
+        self.close_window = self.folder / "close_window.png"
+        self.end_of_list = self.livres_folder / "fin_liste.png"
 
         self.all_parameters = self.results / "all_parameters.txt"
         self.parameters: typing.List[str] = []
         self.all_params_file = open(str(self.all_parameters), "w")
         self.write_to_file = True
 
-        current_time = str(datetime.datetime.now())
-        current_time = replace_in_string(current_time, {" ": "_", ":": "-"})
-        logger.add(self.results / f"file_{current_time}.log")
-
         pyscreeze.USE_IMAGE_NOT_FOUND_EXCEPTION = True
 
     def run(self):
         for url in self.urls:
-            logger.info(f"Current year is {url.year}.")
+            loguru.logger.info(f"Current year is {url.year}.")
             open_webbrowser(url.url)
 
             url_folder = self.results / url.year
@@ -318,10 +307,10 @@ class GUIExtractor(Extractor):
             print(f"No save button for [{x_sheet}, {y_sheet}].")
             return
         # Ctrl+l to get URL
-        pyautogui.hotkey('ctrl', 'l', interval=0.1)
+        pyautogui.hotkey("ctrl", "l", interval=0.1)
         time.sleep(0.1)
         # Copy the URL to the clipboard.
-        pyautogui.hotkey('ctrl', 'c', interval=0.1)
+        pyautogui.hotkey("ctrl", "c", interval=0.1)
         time.sleep(0.1)
 
         win32clipboard.OpenClipboard()
@@ -334,7 +323,7 @@ class GUIExtractor(Extractor):
             self.all_params_file.flush()
             self.parameters.append(parameter)
         else:
-            logger.info(f"Parameter {parameter} already exists. URL is {new_data}.\n")
+            loguru.logger.info(f"Parameter {parameter} already exists. URL is {new_data}.\n")
 
         time.sleep(0.25)
         find_imgs_on_screen(str(self.close_window))
@@ -360,7 +349,7 @@ class GUIExtractor(Extractor):
         shutil.unpack_archive(str(zip_file), str(self.folder))
         csv_file = next(iter([e for e in self.folder.iterdir() if "csv" in e.suffix]), None)
 
-        df = pd.read_csv(str(csv_file), sep=";", encoding='latin1')
+        df = pd.read_csv(str(csv_file), sep=";", encoding="latin1")
         param = next(iter([c for c in list(df.columns) if "param" in c]), None)
         if not param:
             param = ""

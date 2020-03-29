@@ -1,7 +1,10 @@
 import abc
+import datetime
 import pathlib
 import re
 import typing
+
+import loguru
 
 
 class Extractor(abc.ABC):
@@ -9,7 +12,16 @@ class Extractor(abc.ABC):
         self.default_url = url
         self.all_years = list(range(_min, _max + 1))
         self.folder = folder
+        self.results = self.folder / "results"
         self.delete_existing = delete_existing
+
+        if self.delete_existing and self.results.exists():
+            _free_dir(self.results)
+        self.results.mkdir(parents=True, exist_ok=True)
+
+        current_time = str(datetime.datetime.now())
+        current_time = replace_in_string(current_time, {" ": "_", ":": "-"})
+        loguru.logger.add(self.results / f"file_{current_time}.log")
 
     @abc.abstractmethod
     def run(self):
