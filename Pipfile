@@ -12,6 +12,10 @@ opencv-python = "==4.2.0.32"
 black = "==19.10b0"
 loguru = "*"
 pandas = "*"
+pyodbc = "*"
+pywin32 = "==227"
+keyboard = "==0.13.5"
+requests = "*"
 
 [requires]
 python_version = "3.7"

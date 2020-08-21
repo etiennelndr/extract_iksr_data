@@ -1,103 +1,40 @@
-from __future__ import annotations
-
-import dataclasses
+import abc
 import datetime
-import os
 import pathlib
-import time
+import re
 import typing
-import webbrowser
-import zipfile
 
-import pandas as pd
-import pyautogui
-import pyscreeze
-from loguru import logger
+import loguru
 
 
-class NoNewSheets(Exception):
-    pass
+class Extractor(abc.ABC):
+    def __init__(self, url: str, _min: int, _max: int, folder: pathlib.Path, delete_existing: bool = False):
+        self.default_url = url
+        self.all_years = list(range(_min, _max + 1))
+        self.folder = folder
+        self.results = self.folder / "results"
+        self.delete_existing = delete_existing
+
+        if self.delete_existing and self.results.exists():
+            _free_dir(self.results)
+        self.results.mkdir(parents=True, exist_ok=True)
+
+        current_time = str(datetime.datetime.now())
+        current_time = replace_in_string(current_time, {" ": "_", ":": "-"})
+        loguru.logger.add(self.results / f"file_{current_time}.log")
+
+    @abc.abstractmethod
+    def run(self):
+        pass
 
 
-def open_webbrowser(url):
+def replace_in_string(text: str, values: typing.Dict[str, str]) -> str:
     """
-    Opens this :param:`url` in a webbroser.
+    See https://stackoverflow.com/a/6117124/11114701 for reference.
     """
-    webbrowser.open_new(url)
-
-
-def get_sub_books(book: pathlib.Path) -> typing.List[pathlib.Path]:
-    """
-    Returns all subbooks of a :param:`book`.
-    """
-    return [b for b in book.iterdir() if b.is_file()]
-
-
-def get_sub_book(books: typing.List[pathlib.Path], value: str) -> pathlib.Path:
-    return next(filter(lambda b: value in b.name, books))
-
-
-def find_img_on_screen(
-        img: pathlib.Path, click: bool = True, on_loop: bool = False, retry: int = 0, max_retries: int = 5, **kwargs
-) -> bool:
-    # Default search time
-    kwargs.setdefault("minSearchTime", 5)
-    # Default confidence
-    kwargs.setdefault("confidence", 0.8)
-
-    try:
-        x, y = pyautogui.locateCenterOnScreen(str(img), **kwargs)
-        if not click:
-            return True
-        pyautogui.click(x, y)
-    except TypeError as err:
-        print(f"{img.name}: {err}")
-        return False
-    except pyscreeze.ImageNotFoundException as err:
-        if on_loop:
-            retry += 1
-            if retry > max_retries:
-                print(f"{img.name}: {err}")
-                return False
-            return find_img_on_screen(img, click, on_loop, retry, max_retries, **kwargs)
-        print(f"{img.name}: {err}")
-        return False
-    return True
-
-
-def find_imgs_on_screen(img: str, click: bool = True, **kwargs) -> typing.Iterable:
-    # Default confidence
-    kwargs.setdefault("confidence", 0.8)
-    # Default sleep time
-    local_kwargs = dict()
-    local_kwargs["sleep_time"] = kwargs.pop("sleep_time", 0.5)
-
-    results = pyautogui.locateAllOnScreen(img, **kwargs)
-    if click:
-        for result in results:
-            x, y = pyautogui.center(result)
-            pyautogui.click(x, y)
-            time.sleep(local_kwargs["sleep_time"])
-    return results
-
-
-def find_one_sub_book(book: Book) -> bool:
-    grey_book = book.grey_sub_book
-    list_minus = book.minus_sub_book
-    list_plus = book.plus_sub_book
-
-    kwargs = {}
-    if "bleu" not in str(book):
-        kwargs["minSearchTime"] = 0.5
-    else:
-        kwargs["on_loop"] = True
-
-    time.sleep(0.5)
-    found_grey = find_img_on_screen(grey_book, **kwargs)
-    found_plus = find_img_on_screen(list_plus, click=False, minSearchTime=0.5)
-    found_minus = find_img_on_screen(list_minus, click=False, minSearchTime=0.5)
-
-    return found_grey or found_plus or found_minus
+    values = dict((re.escape(k), v) for k, v in values.items())
+    pattern = re.compile("|".join(values.keys()))
+    return pattern.sub(lambda m: values[re.escape(m.group(0))], text)
 
 
 def _free_dir(_dir: pathlib.Path) -> None:
