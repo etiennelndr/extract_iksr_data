@@ -4,10 +4,10 @@ import dataclasses
 import datetime
 import os
 import pathlib
-import shutil
 import time
 import typing
 import webbrowser
+import zipfile
 
 import pandas as pd
 import pyautogui
@@ -177,7 +177,9 @@ class Extractor:
         livres_folder = folder / "livres"
         self.books = [d for d in livres_folder.iterdir() if d.is_dir()]
         self.descendre_liste = livres_folder / "descendre_liste.png"
+        self.descendre_liste_80 = livres_folder / "descendre_liste_80.png"
         self.monter_liste = livres_folder / "monter_liste.png"
+        self.monter_liste_80 = livres_folder / "monter_liste_80.png"
         self.fiche = livres_folder / "fiche.png"
         self.close_tab = folder / "close_tab.png"
         self.save = livres_folder / "sauvegarde.png"
@@ -205,8 +207,8 @@ class Extractor:
             url_folder.mkdir(parents=True, exist_ok=True)
 
             for _book in self.books:
-                if url.year == "2012" and _book.name == "bleu":
-                    time.sleep(10)
+                if url.year == "1995" and _book.name != "rouge":
+                    time.sleep(5)
                     continue
 
                 book = Book(url, url_folder, _book)
@@ -269,8 +271,12 @@ class Extractor:
 
         # Go down
         try:
+            if int(book.url.year) <= 1989:
+                descendre_liste = self.descendre_liste_80
+            else:
+                descendre_liste = self.descendre_liste
             for _ in range(go_deeper_by):
-                find_img_on_screen(self.descendre_liste, confidence=0.99)
+                find_img_on_screen(descendre_liste, confidence=0.99)
             new_deep = self.loop_on_sheets(book, deep=deep + go_deeper_by, go_deeper_by=go_deeper_by)
         except pyscreeze.ImageNotFoundException:
             print("Can't go deeper.")
@@ -284,10 +290,15 @@ class Extractor:
 
         if deep:
             return new_deep
-        for _ in range(new_deep):
-            find_img_on_screen(self.monter_liste, confidence=0.95)
 
-    def save_sheet(self, book: Book, x_sheet: int, y_sheet: int, max_retries: int = 10):
+        if int(book.url.year) <= 1989:
+            monter_liste = self.monter_liste_80
+        else:
+            monter_liste = self.monter_liste
+        for _ in range(new_deep):
+            find_img_on_screen(monter_liste, confidence=0.95)
+
+    def save_sheet(self, book: Book, x_sheet: int, y_sheet: int, max_retries: int = 10, retry: bool = True):
         # Try to a find a `save` button.
         if not find_img_on_screen(self.save, minSearchTime=1, confidence=0.97):
             print(f"No save button for [{x_sheet}, {y_sheet}].")
@@ -330,7 +341,27 @@ class Extractor:
             print(f"Didn't find any zip file for {book.result_folder}")
             return
 
-        shutil.unpack_archive(str(zip_file), str(self.folder))
+        # Create a ZipFile Object and load sample.zip in it
+        try:
+            with zipfile.ZipFile(str(zip_file), 'r') as zip_obj:
+                # Extract all the contents of zip file in different directory
+                zip_obj.extractall(str(self.folder))
+            time.sleep(0.5)
+        except zipfile.BadZipFile:
+            if zip_file.exists():
+                zip_file.unlink()
+            time.sleep(0.5)
+            find_imgs_on_screen(str(self.close_window))
+            if retry:
+                time.sleep(0.5)
+                return self.save_sheet(book, x_sheet, y_sheet, max_retries, retry=False)
+            else:
+                tmp_filename = str(datetime.datetime.now()).replace(" ", "_").replace(":", "-")
+                tmp_path = book.result_folder / f"{tmp_filename}.txt"
+                logger.info(f"Could not download CSV file. Error file is {tmp_path}.")
+                tmp_path.touch()
+                return
+            
         csv_file = next(iter([e for e in self.folder.iterdir() if "csv" in e.suffix]), None)
 
         df = pd.read_csv(str(csv_file), sep=";", encoding='latin1')
