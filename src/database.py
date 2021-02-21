@@ -6,6 +6,7 @@ import typing
 
 import pandas as pd
 import pyodbc
+from loguru import logger
 
 
 def split_parameter(value: str) -> typing.Tuple[str, str]:
@@ -35,14 +36,7 @@ class Database:
                                 r"parameters(parameter, unit) values (?, ?)"
 
         if free:
-            self.cursor.execute("delete * from iksr_data")
-            self.cnxn.commit()
-            self.cursor.execute(r"delete * from [C:\Users\cassandra\Documents"
-                                r"\Qualité Sédiments\IKSR\IKSR.accdb]."
-                                r"parameters")
-            self.cnxn.commit()
-            self.cursor.execute("alter table iksr_data ALTER COLUMN id COUNTER(1,1)")
-            self.cnxn.commit()
+            self.free()
 
         assert folder.exists(), f"{folder} doesn't exist."
         self.folder = folder
@@ -55,6 +49,16 @@ class Database:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cursor.close()
         self.cnxn.close()
+
+    def free(self) -> None:
+        self.cursor.execute("delete * from iksr_data")
+        self.cnxn.commit()
+        self.cursor.execute(r"delete * from [C:\Users\cassandra\Documents"
+                            r"\Qualité Sédiments\IKSR\IKSR.accdb]."
+                            r"parameters")
+        self.cnxn.commit()
+        self.cursor.execute("alter table iksr_data ALTER COLUMN id COUNTER(1,1)")
+        self.cnxn.commit()
 
     def run(self):
         for year in self.years:
@@ -117,5 +121,5 @@ class Database:
         try:
             self.cursor.execute(query, values)
             self.cnxn.commit()
-        except pyodbc.IntegrityError:
-            pass
+        except pyodbc.IntegrityError as err:
+            logger.error(f"Error {err} for query {query} with values {values}")
